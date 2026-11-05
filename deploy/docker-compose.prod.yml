@@ -1,0 +1,45 @@
+# Production stack on the server, in /opt/spool-api next to its .env file.
+# CI copies this file there and runs:
+#   SPOOL_IMAGE=ghcr.io/jkhandeveloper/spool-api:<sha> docker compose -f docker-compose.prod.yml up -d
+name: spool
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: spool_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: spool
+      POSTGRES_DB: spool
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    # Small server (1 GB RAM, shared with other apps): keep Postgres lean.
+    command: ['postgres', '-c', 'shared_buffers=32MB', '-c', 'max_connections=30']
+    volumes:
+      - spool-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U spool -d spool']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 160m
+
+  api:
+    image: ${SPOOL_IMAGE:-ghcr.io/jkhandeveloper/spool-api:latest}
+    container_name: spool_api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      TRUST_PROXY: '1'
+      DATABASE_URL: postgres://spool:${POSTGRES_PASSWORD}@db:5432/spool
+    depends_on:
+      db:
+        condition: service_healthy
+    # Only nginx on the host can reach it.
+    ports:
+      - '127.0.0.1:3010:3000'
+    mem_limit: 320m
+
+volumes:
+  spool-pg:

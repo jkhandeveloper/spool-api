@@ -45,6 +45,11 @@ See [.env.example](.env.example). Key settings:
 - `SUMMARY_PROVIDER`: `anthropic` (default) or `local`, an offline heuristic for dev and tests only.
 - `ANTHROPIC_API_KEY`: credentials for Claude. The SDK also picks up `ant auth login` profiles.
 - `ANTHROPIC_MODEL`: defaults to `claude-opus-5-5`.
+- `TRUST_PROXY`: number of reverse proxies in front of the API (set to `1` behind nginx), so rate limits use the real client IP.
+
+## Deployment
+
+Pushes to `main` are tested, built into a Docker image and deployed to https://api.spool.zasstech.com by GitHub Actions. See [DEPLOY.md](DEPLOY.md) for the server layout, one-time setup, secrets and day-to-day commands.
 
 ## Privacy model
 
