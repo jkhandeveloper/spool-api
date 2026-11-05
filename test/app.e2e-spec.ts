@@ -271,6 +271,10 @@ describe('Spool API (e2e)', () => {
         title: 'Balance',
         includeInPrompts: false,
       });
+      // Fields not sent in a PATCH are left intact in the response (regression).
+      expect(updated.body.body).toBe(
+        'Finding my balance\nI need a little more space to recharge.',
+      );
 
       await http.delete(`/api/v1/journal/${id}`).set(auth).expect(204);
       await http.get(`/api/v1/journal/${id}`).set(auth).expect(404);
@@ -347,7 +351,7 @@ describe('Spool API (e2e)', () => {
         (await http.get('/api/v1/sessions').set(auth).expect(200)).body,
       ).toHaveLength(0);
 
-      await http
+      const patched = await http
         .patch(`/api/v1/sessions/${id}`)
         .set(auth)
         .send({
@@ -355,6 +359,9 @@ describe('Spool API (e2e)', () => {
           dailyGoal: 'Take a five-minute walk.',
         })
         .expect(200);
+      // Untouched fields survive a partial update (regression).
+      expect(patched.body.mainPoints).toEqual(draft.mainPoints);
+      expect(patched.body.weeklyGoal).toBe(draft.weeklyGoal);
 
       const saved = await http
         .post(`/api/v1/sessions/${id}/save`)

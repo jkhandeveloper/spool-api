@@ -27,6 +27,7 @@ import type {
   SubmitTranscriptDto,
   UpdateSessionDto,
 } from './sessions.dto.js';
+import { assignDefined } from '../common/assign-defined.js';
 
 /** A session stuck in "processing" this long (e.g. server restarted) is marked failed. */
 const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000;
@@ -167,7 +168,7 @@ export class SessionsService implements OnApplicationShutdown {
     if (session.status !== 'draft' && session.status !== 'saved') {
       throw new ConflictException('Only a summary can be edited');
     }
-    Object.assign(session, dto);
+    assignDefined(session, dto);
     return this.sessions.save(session);
   }
 

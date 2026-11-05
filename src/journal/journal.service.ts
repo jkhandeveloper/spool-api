@@ -6,6 +6,7 @@ import type {
   CreateJournalEntryDto,
   UpdateJournalEntryDto,
 } from './journal.dto.js';
+import { assignDefined } from '../common/assign-defined.js';
 
 export function deriveTitle(body: string): string {
   const firstLine =
@@ -58,7 +59,7 @@ export class JournalService {
     dto: UpdateJournalEntryDto,
   ): Promise<JournalEntry> {
     const entry = await this.get(userId, id);
-    Object.assign(entry, dto);
+    assignDefined(entry, dto);
     return this.entries.save(entry);
   }
 

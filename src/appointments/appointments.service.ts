@@ -10,6 +10,7 @@ import type {
   CreateAppointmentDto,
   UpdateAppointmentDto,
 } from './appointments.dto.js';
+import { assignDefined } from '../common/assign-defined.js';
 
 const MAX_RANGE_DAYS = 400;
 
@@ -62,7 +63,7 @@ export class AppointmentsService {
   }
 
   create(userId: string, dto: CreateAppointmentDto): Promise<Appointment> {
-    return this.appts.save(Object.assign(this.appts.create({ userId }), dto));
+    return this.appts.save(assignDefined(this.appts.create({ userId }), dto));
   }
 
   async update(
@@ -73,7 +74,7 @@ export class AppointmentsService {
     const appt = await this.get(userId, id);
     if (appt.cancelledAt)
       throw new BadRequestException('This appointment was cancelled');
-    Object.assign(appt, dto);
+    assignDefined(appt, dto);
     return this.appts.save(appt);
   }
 
