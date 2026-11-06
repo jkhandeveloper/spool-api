@@ -6,6 +6,10 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 : "${SPOOL_IMAGE:?SPOOL_IMAGE is required}"
+if ! docker compose version >/dev/null 2>&1; then
+  echo "Docker Compose v2 is missing. As root: apt-get install -y docker-compose-v2" >&2
+  exit 1
+fi
 COMPOSE=(docker compose -f docker-compose.prod.yml)
 
 previous=""
