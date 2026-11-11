@@ -9,6 +9,7 @@ import {
   type SummaryInput,
   type SummaryProvider,
 } from './summary.types.js';
+import { LocalSummaryProvider } from './local-summary.provider.js';
 
 const SYSTEM_PROMPT = `You help a person reflect on their own therapy session. They recorded the session (with everyone's consent) and will read your summary afterwards, then review and edit it before anything is saved.
 
@@ -22,6 +23,7 @@ The transcript was produced by on-device speech recognition, so it has no speake
 export class AnthropicSummaryProvider implements SummaryProvider {
   private readonly logger = new Logger(AnthropicSummaryProvider.name);
   private readonly client = new Anthropic();
+  private readonly localFallback = new LocalSummaryProvider();
 
   constructor(private readonly config: ConfigService) {}
 
@@ -53,7 +55,11 @@ export class AnthropicSummaryProvider implements SummaryProvider {
         ],
       });
     } catch (error) {
-      throw this.toSummaryError(error);
+      const summaryError = this.toSummaryError(error);
+      this.logger.warn(
+        `Claude summary unavailable (${summaryError.message}); using the local fallback summary`,
+      );
+      return this.localFallback.summarize({ transcript, prompts });
     }
 
     if (response.stop_reason === 'refusal') {
