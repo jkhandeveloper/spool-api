@@ -66,7 +66,7 @@ Certbot edits the nginx site to add TLS and an http → https redirect, and its 
 
 ```bash
 ssh spool-deploy
-nano /opt/spool-api/.env        # set ANTHROPIC_API_KEY=sk-ant-...
+nano /opt/spool-api/.env        # set OPENAI_API_KEY=sk-... (or ANTHROPIC_API_KEY)
 cd /opt/spool-api && docker compose -f docker-compose.prod.yml up -d
 ```
 
