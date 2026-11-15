@@ -12,6 +12,7 @@ import { JournalModule } from './journal/journal.module.js';
 import { SessionsModule } from './sessions/sessions.module.js';
 import { GoalsModule } from './goals/goals.module.js';
 import { AppointmentsModule } from './appointments/appointments.module.js';
+import { AdminModule } from './admin/admin.module.js';
 import { MeditationsController } from './meditations/meditations.controller.js';
 import { TodayController } from './today/today.controller.js';
 import { HealthController } from './health/health.controller.js';
@@ -48,6 +49,7 @@ import { HealthController } from './health/health.controller.js';
     SessionsModule,
     GoalsModule,
     AppointmentsModule,
+    AdminModule,
   ],
   controllers: [MeditationsController, TodayController, HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

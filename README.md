@@ -48,6 +48,7 @@ See [.env.example](.env.example). Key settings:
 - `ANTHROPIC_MODEL`: defaults to `claude-opus-5-5`.
 
 If the model API can't be reached (bad key, outage, network), the session still gets a draft from the local summarizer, and the API logs a warning.
+- `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_TOKEN_TTL`: the single admin login for the analytics dashboard (spool-web `/admin`). An empty password disables admin login. Change the password by editing `.env` and restarting the API. Admin tokens last `ADMIN_TOKEN_TTL` (default `8h`).
 - `TRUST_PROXY`: number of reverse proxies in front of the API (set to `1` behind nginx), so rate limits use the real client IP.
 
 ## Deployment
@@ -66,6 +67,12 @@ These are the promises the consent script (screen 02) makes, and how the API kee
 
 The configured model provider (OpenAI or Claude) is the only outside processor. It receives the transcript text and the discussion prompts. The system prompt tells it to treat the transcript as material to summarize, not as instructions. OpenAI requests set `store: false`. Claude requests set `fallbacks: "default"`, so a safety decline is retried on a fallback model. If the model refuses, the session fails without a retry and the transcript is dropped.
 
+## Admin analytics
+
+`POST admin/login {username, password}` checks the credentials against `ADMIN_USERNAME` / `ADMIN_PASSWORD` in constant time. It is rate-limited to 5 attempts per minute and returns a JWT with `typ: "admin"`. The user `JwtAuthGuard` rejects that type everywhere, and `AdminGuard` accepts nothing else, so admin and user tokens can't be swapped. Changing `ADMIN_USERNAME` invalidates the admin tokens already issued.
+
+Analytics queries (`src/analytics/analytics.service.ts`) read only counts, timestamps, statuses and durations. Admin endpoints never return journal text, session summaries, topics, goal text or reflections. "Active" means a user wrote a journal entry, started a session or checked in on a goal. Sign-ins aren't tracked.
+
 ## API overview
 
 All routes are under `/api/v1`. Every route needs a `Bearer` access token except `auth/*` (other than `logout`) and `health`.
@@ -80,6 +87,8 @@ All routes are under `/api/v1`. Every route needs a `Bearer` access token except
 | Goals (P4) | `GET/POST goals`, `GET/PATCH goals/:id`, `POST goals/:id/check-ins` |
 | Appointments (05, 10, P7) | `GET appointments?from&to`, `GET appointments/next`, `POST appointments`, `GET/PATCH/DELETE appointments/:id` (delete cancels) |
 | Meditations (P3) | `GET meditations`, `GET meditations/:id` |
+| Insights | `GET me/insights?days=7\|30\|90\|365&tz=<IANA zone>`: the user's own activity, streaks, topics and patterns |
+| Admin analytics | `POST admin/login`, `GET admin/analytics?days&tz`, `GET admin/users?search&sort&order&limit&offset`, `GET admin/users/:id?days&tz` (admin token only) |
 | Health | `GET health` |
 
 ### Session lifecycle

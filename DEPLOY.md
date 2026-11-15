@@ -72,6 +72,18 @@ cd /opt/spool-api && docker compose -f docker-compose.prod.yml up -d
 
 Until a key is set, everything else works, but summaries fail and the app offers **Try again**.
 
+### 2d. Admin login (analytics dashboard)
+
+`ADMIN_USERNAME` and `ADMIN_PASSWORD` in `/opt/spool-api/.env` are the login for https://web.spool.zasstech.com/admin. To change them:
+
+```bash
+ssh spool-deploy
+nano /opt/spool-api/.env        # edit ADMIN_USERNAME / ADMIN_PASSWORD
+cd /opt/spool-api && SPOOL_IMAGE=$(cat .current-image) ./deploy.sh
+```
+
+An empty `ADMIN_PASSWORD` turns admin login off.
+
 ## 3. GitHub Actions secrets
 
 In GitHub → **jkhandeveloper/spool-api** → Settings → Secrets and variables → Actions → **New repository secret**:

@@ -15,6 +15,8 @@ export interface AppConfig {
     openaiApiKey: string;
     openaiModel: string;
   };
+  /** Single admin login for the analytics dashboard. Disabled when the password is empty. */
+  admin: { username: string; password: string; tokenTtl: string };
 }
 
 export type SummaryProviderName = 'openai' | 'anthropic' | 'local';
@@ -79,6 +81,11 @@ export default (): AppConfig => {
       model: process.env.ANTHROPIC_MODEL ?? 'claude-opus-5-5',
       openaiApiKey: process.env.OPENAI_API_KEY ?? '',
       openaiModel: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
+    },
+    admin: {
+      username: process.env.ADMIN_USERNAME?.trim() || 'admin',
+      password: process.env.ADMIN_PASSWORD ?? '',
+      tokenTtl: process.env.ADMIN_TOKEN_TTL || '8h',
     },
   };
 };

@@ -13,6 +13,8 @@ process.env.DATABASE_URL ??=
 process.env.NODE_ENV = 'test';
 process.env.SUMMARY_PROVIDER = 'local';
 process.env.DB_SYNCHRONIZE = 'false';
+process.env.ADMIN_USERNAME = 'admin';
+process.env.ADMIN_PASSWORD = 'admin-test-password';
 
 const TRANSCRIPT =
   "I've been feeling a lot of stress at work lately and it spills into the evenings. " +
@@ -563,6 +565,100 @@ describe('Spool API (e2e)', () => {
       expect(list.body.length).toBeGreaterThan(0);
       await http.get('/api/v1/meditations/safe-place').set(auth).expect(200);
       await http.get('/api/v1/meditations/nope').set(auth).expect(404);
+    });
+  });
+
+  describe('analytics', () => {
+    async function adminAuth() {
+      const res = await http
+        .post('/api/v1/admin/login')
+        .send({ username: 'admin', password: 'admin-test-password' })
+        .expect(200);
+      return { Authorization: `Bearer ${res.body.accessToken as string}` };
+    }
+
+    it('rejects wrong admin credentials', async () => {
+      await http
+        .post('/api/v1/admin/login')
+        .send({ username: 'admin', password: 'nope' })
+        .expect(401);
+      await http
+        .post('/api/v1/admin/login')
+        .send({ username: 'root', password: 'admin-test-password' })
+        .expect(401);
+    });
+
+    it('keeps admin and user tokens apart', async () => {
+      const { auth } = await signUp();
+      const admin = await adminAuth();
+      await http.get('/api/v1/admin/analytics').expect(401);
+      await http.get('/api/v1/admin/analytics').set(auth).expect(401);
+      await http.get('/api/v1/me').set(admin).expect(401);
+      await http.get('/api/v1/me/insights').set(admin).expect(401);
+    });
+
+    it('serves admin overview, user list and user detail without content', async () => {
+      const { auth, email } = await signUp({ displayName: 'Analytic' });
+      await http
+        .post('/api/v1/journal')
+        .set(auth)
+        .send({ body: 'A secret thought about my week' })
+        .expect(201);
+      const admin = await adminAuth();
+
+      const ov = await http
+        .get('/api/v1/admin/analytics?days=7&tz=Asia/Karachi')
+        .set(admin)
+        .expect(200);
+      expect(ov.body.series).toHaveLength(7);
+      expect(ov.body.tz).toBe('Asia/Karachi');
+      expect(ov.body.totals.users).toBeGreaterThan(0);
+      expect(ov.body.period.journalEntries.value).toBeGreaterThan(0);
+      expect(ov.body.heatmap).toHaveLength(7);
+      expect(ov.body.funnel[0].step).toBe('Signed up');
+
+      const bad = await http
+        .get('/api/v1/admin/analytics?tz=Not/AZone')
+        .set(admin)
+        .expect(200);
+      expect(bad.body.tz).toBe('UTC');
+      await http.get('/api/v1/admin/analytics?days=12').set(admin).expect(400);
+
+      const list = await http
+        .get(
+          `/api/v1/admin/users?search=${encodeURIComponent(email)}&sort=journalEntries`,
+        )
+        .set(admin)
+        .expect(200);
+      expect(list.body.total).toBe(1);
+      expect(list.body.items[0]).toMatchObject({ email, journalEntries: 1 });
+
+      const detail = await http
+        .get(`/api/v1/admin/users/${list.body.items[0].id as string}?days=30`)
+        .set(admin)
+        .expect(200);
+      expect(detail.body.series).toHaveLength(30);
+      expect(JSON.stringify(detail.body)).not.toContain('secret thought');
+      expect(JSON.stringify(ov.body)).not.toContain('secret thought');
+    });
+
+    it('gives users their own insights', async () => {
+      const { auth } = await signUp();
+      await http
+        .post('/api/v1/journal')
+        .set(auth)
+        .send({ body: 'one two three' })
+        .expect(201);
+      const res = await http
+        .get('/api/v1/me/insights?days=7')
+        .set(auth)
+        .expect(200);
+      expect(res.body).toMatchObject({
+        totals: { journalEntries: 1, words: 3 },
+        period: { journalEntries: { value: 1 }, activeDays: 1 },
+        streak: { current: 1, longest: 1 },
+      });
+      expect(res.body.series).toHaveLength(7);
     });
   });
 });
