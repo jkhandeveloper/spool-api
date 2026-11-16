@@ -86,11 +86,27 @@ export class AnalyticsService {
 
   /** Permanently removes one account and all rows owned by it via DB cascades. */
   async deleteUser(userId: string): Promise<void> {
-    const rows = await this.q<{ id: string }>(
-      'DELETE FROM users WHERE id = $1 RETURNING id',
-      [userId],
-    );
-    if (!rows.length) throw new NotFoundException();
+    await this.db.transaction(async (tx) => {
+      const user = await tx.query<{ id: string }>(
+        'SELECT id FROM users WHERE id = $1 FOR UPDATE',
+        [userId],
+      );
+      if (!user.length) throw new NotFoundException();
+
+      // Keep this explicit instead of relying only on database cascades. It
+      // also works against older production schemas created before a cascade
+      // constraint was added.
+      await tx.query(
+        'DELETE FROM goal_check_ins WHERE "goalId" IN (SELECT id FROM goals WHERE "userId" = $1)',
+        [userId],
+      );
+      await tx.query('DELETE FROM password_resets WHERE "userId" = $1', [userId]);
+      await tx.query('DELETE FROM goals WHERE "userId" = $1', [userId]);
+      await tx.query('DELETE FROM therapy_sessions WHERE "userId" = $1', [userId]);
+      await tx.query('DELETE FROM journal_entries WHERE "userId" = $1', [userId]);
+      await tx.query('DELETE FROM appointments WHERE "userId" = $1', [userId]);
+      await tx.query('DELETE FROM users WHERE id = $1', [userId]);
+    });
   }
 
   // ---------------------------------------------------------------- admin
