@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -74,5 +75,11 @@ export class AdminController {
   @Get('users/:id')
   user(@Param('id', ParseUUIDPipe) id: string, @Query() q: AnalyticsQuery) {
     return this.analytics.user(id, q.days ?? 90, q.tz ?? 'UTC');
+  }
+
+  @UseGuards(AdminGuard)
+  @Delete('users/:id')
+  deleteUser(@Param('id', ParseUUIDPipe) id: string) {
+    return this.analytics.deleteUser(id);
   }
 }

@@ -84,6 +84,15 @@ export class AnalyticsService {
     return this.db.query(sql, params);
   }
 
+  /** Permanently removes one account and all rows owned by it via DB cascades. */
+  async deleteUser(userId: string): Promise<void> {
+    const rows = await this.q<{ id: string }>(
+      'DELETE FROM users WHERE id = $1 RETURNING id',
+      [userId],
+    );
+    if (!rows.length) throw new NotFoundException();
+  }
+
   // ---------------------------------------------------------------- admin
 
   async overview(days: number, tz: string) {
