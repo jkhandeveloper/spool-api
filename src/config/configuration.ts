@@ -38,6 +38,11 @@ export function pickSummaryProvider(
   }
   if (env.OPENAI_API_KEY) return 'openai';
   return 'anthropic';
+  audio: {
+    apiKey?: string;
+    model: string;
+    voice: string;
+  };
 }
 
 function bool(value: string | undefined, fallback: boolean): boolean {
@@ -86,6 +91,11 @@ export default (): AppConfig => {
       username: process.env.ADMIN_USERNAME?.trim() || 'admin',
       password: process.env.ADMIN_PASSWORD ?? '',
       tokenTtl: process.env.ADMIN_TOKEN_TTL || '8h',
+    },
+    audio: {
+      apiKey: process.env.OPENAI_API_KEY,
+      model: process.env.OPENAI_TTS_MODEL ?? 'gpt-4o-mini-tts',
+      voice: process.env.OPENAI_TTS_VOICE ?? 'coral',
     },
   };
 };
