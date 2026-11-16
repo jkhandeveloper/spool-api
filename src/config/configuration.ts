@@ -15,6 +15,11 @@ export interface AppConfig {
     openaiApiKey: string;
     openaiModel: string;
   };
+  audio: {
+    apiKey?: string;
+    model: string;
+    voice: string;
+  };
   /** Single admin login for the analytics dashboard. Disabled when the password is empty. */
   admin: { username: string; password: string; tokenTtl: string };
 }
@@ -38,11 +43,6 @@ export function pickSummaryProvider(
   }
   if (env.OPENAI_API_KEY) return 'openai';
   return 'anthropic';
-  audio: {
-    apiKey?: string;
-    model: string;
-    voice: string;
-  };
 }
 
 function bool(value: string | undefined, fallback: boolean): boolean {
