@@ -89,10 +89,10 @@ export class AnalyticsService {
   /** Permanently removes one account and all rows owned by it via DB cascades. */
   async deleteUser(userId: string): Promise<void> {
     await this.db.transaction(async (tx) => {
-      const user = await tx.query<{ id: string }>(
+      const user = (await tx.query<{ id: string }[]>(
         'SELECT id FROM users WHERE id = $1 FOR UPDATE',
         [userId],
-      );
+      )) as { id: string }[];
       if (!user.length) throw new NotFoundException();
 
       // Keep this explicit instead of relying only on database cascades. It
