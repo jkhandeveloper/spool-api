@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Patch,
   Get,
   HttpCode,
   HttpStatus,
@@ -81,5 +82,14 @@ export class AdminController {
   @Delete('users/:id')
   deleteUser(@Param('id', ParseUUIDPipe) id: string) {
     return this.analytics.deleteUser(id);
+  }
+
+  @UseGuards(AdminGuard)
+  @Patch('users/:id/status')
+  setUserStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('enabled') enabled: boolean,
+  ) {
+    return this.analytics.setUserEnabled(id, enabled);
   }
 }

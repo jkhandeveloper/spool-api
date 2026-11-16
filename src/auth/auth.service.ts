@@ -64,7 +64,7 @@ export class AuthService {
   async login(dto: LoginDto): Promise<TokenPair> {
     const user = await this.users.findOne({
       where: { email: dto.email },
-      select: { id: true, email: true, passwordHash: true, tokenVersion: true },
+      select: { id: true, email: true, passwordHash: true, tokenVersion: true, enabled: true },
     });
     // Compare even when the user is missing so timing doesn't reveal which emails exist.
     this.dummyHash ??= await bcrypt.hash(
@@ -75,7 +75,7 @@ export class AuthService {
       dto.password,
       user?.passwordHash ?? this.dummyHash,
     );
-    if (!user || !ok)
+    if (!user || !ok || !user.enabled)
       throw new UnauthorizedException('Email or password is incorrect');
     return this.issueTokens(user.id, user.email, user.tokenVersion);
   }
@@ -93,9 +93,9 @@ export class AuthService {
 
     const user = await this.users.findOne({
       where: { id: payload.sub },
-      select: { id: true, email: true, tokenVersion: true },
+      select: { id: true, email: true, tokenVersion: true, enabled: true },
     });
-    if (!user || user.tokenVersion !== payload.ver)
+    if (!user || !user.enabled || user.tokenVersion !== payload.ver)
       throw new UnauthorizedException();
     return this.issueTokens(user.id, user.email, user.tokenVersion);
   }
