@@ -44,6 +44,7 @@ See [.env.example](.env.example). Key settings:
 - `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`: required in production.
 - `SUMMARY_PROVIDER`: `openai`, `anthropic` or `local` (an offline heuristic for dev and tests only). When empty, it's `openai` if `OPENAI_API_KEY` is set, otherwise `anthropic`.
 - `OPENAI_API_KEY`, `OPENAI_MODEL`: credentials and model for OpenAI (default `gpt-5.4-mini`). Requests use the Responses API with structured output and `store: false`.
+- `OPENAI_TTS_MODEL`, `OPENAI_TTS_VOICE`: guided meditation narration settings. Narration uses the server-side `OPENAI_API_KEY`; the key is never shipped in the mobile app.
 - `ANTHROPIC_API_KEY`: credentials for Claude. The SDK also picks up `ant auth login` profiles.
 - `ANTHROPIC_MODEL`: defaults to `claude-opus-5-5`.
 
