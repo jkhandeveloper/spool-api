@@ -68,10 +68,10 @@ describe('MeditationsController audio', () => {
     expect(fetchMock).toHaveBeenCalledTimes(meditation.steps.length);
 
     const [, requestInit] = fetchMock.mock.calls[0]!;
-    const request = JSON.parse(String(requestInit?.body)) as Record<
-      string,
-      unknown
-    >;
+    const body = requestInit?.body;
+    if (typeof body !== 'string')
+      throw new TypeError('Expected a JSON request body');
+    const request = JSON.parse(body) as Record<string, unknown>;
     expect(request).toMatchObject({
       model: 'test-model',
       voice: 'coral',
