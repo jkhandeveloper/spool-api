@@ -7,8 +7,11 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY, type AuthUser } from '../common/decorators.js';
+import { User } from '../users/user.entity.js';
 
 export interface AccessPayload {
   sub: string;
@@ -22,6 +25,7 @@ export class JwtAuthGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    @InjectRepository(User) private readonly users: Repository<User>,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -42,6 +46,11 @@ export class JwtAuthGuard implements CanActivate {
         secret: this.config.getOrThrow<string>('jwt.accessSecret'),
       });
       if (payload.typ !== 'access') throw new Error('wrong token type');
+      const user = await this.users.findOne({
+        where: { id: payload.sub },
+        select: { id: true, enabled: true },
+      });
+      if (!user?.enabled) throw new Error('account disabled');
       req.user = { id: payload.sub, email: payload.email };
       return true;
     } catch {

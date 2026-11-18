@@ -15,6 +15,11 @@ export interface AppConfig {
     openaiApiKey: string;
     openaiModel: string;
   };
+  audio: {
+    apiKey?: string;
+    model: string;
+    voice: string;
+  };
   /** Single admin login for the analytics dashboard. Disabled when the password is empty. */
   admin: { username: string; password: string; tokenTtl: string };
 }
@@ -86,6 +91,11 @@ export default (): AppConfig => {
       username: process.env.ADMIN_USERNAME?.trim() || 'admin',
       password: process.env.ADMIN_PASSWORD ?? '',
       tokenTtl: process.env.ADMIN_TOKEN_TTL || '8h',
+    },
+    audio: {
+      apiKey: process.env.OPENAI_API_KEY,
+      model: process.env.OPENAI_TTS_MODEL ?? 'gpt-4o-mini-tts',
+      voice: process.env.OPENAI_TTS_VOICE ?? 'coral',
     },
   };
 };

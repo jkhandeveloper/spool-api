@@ -28,6 +28,10 @@ export class User {
   @Column({ type: 'boolean', default: false })
   journalOnly: boolean;
 
+  /** Disabled accounts cannot sign in or use an existing session. */
+  @Column({ type: 'boolean', default: true })
+  enabled: boolean;
+
   @Column({ type: 'timestamptz', nullable: true })
   privacyReviewedAt: Date | null;
 

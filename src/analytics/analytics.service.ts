@@ -38,6 +38,7 @@ const SINCE = `((date_trunc('day', now() AT TIME ZONE $1) - make_interval(days =
 
 const USER_ROW = `
   SELECT u.id, u.email, u."displayName", u."createdAt", u."journalOnly",
+         u."enabled",
          u."graduatedAt", u."privacyReviewedAt",
     (SELECT count(*) FROM journal_entries j WHERE j."userId" = u.id)::int AS "journalEntries",
     (SELECT count(*) FROM therapy_sessions s WHERE s."userId" = u.id AND s.status = 'saved')::int AS "savedSessions",
@@ -56,6 +57,7 @@ export interface AdminUserRow {
   displayName: string | null;
   createdAt: Date;
   journalOnly: boolean;
+  enabled: boolean;
   graduatedAt: Date | null;
   privacyReviewedAt: Date | null;
   journalEntries: number;
@@ -82,6 +84,40 @@ export class AnalyticsService {
 
   private q<T = Row>(sql: string, params: unknown[] = []): Promise<T[]> {
     return this.db.query(sql, params);
+  }
+
+  /** Permanently removes one account and all rows owned by it via DB cascades. */
+  async deleteUser(userId: string): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const user = (await tx.query<{ id: string }[]>(
+        'SELECT id FROM users WHERE id = $1 FOR UPDATE',
+        [userId],
+      )) as { id: string }[];
+      if (!user.length) throw new NotFoundException();
+
+      // Keep this explicit instead of relying only on database cascades. It
+      // also works against older production schemas created before a cascade
+      // constraint was added.
+      await tx.query(
+        'DELETE FROM goal_check_ins WHERE "goalId" IN (SELECT id FROM goals WHERE "userId" = $1)',
+        [userId],
+      );
+      await tx.query('DELETE FROM password_resets WHERE "userId" = $1', [userId]);
+      await tx.query('DELETE FROM goals WHERE "userId" = $1', [userId]);
+      await tx.query('DELETE FROM therapy_sessions WHERE "userId" = $1', [userId]);
+      await tx.query('DELETE FROM journal_entries WHERE "userId" = $1', [userId]);
+      await tx.query('DELETE FROM appointments WHERE "userId" = $1', [userId]);
+      await tx.query('DELETE FROM users WHERE id = $1', [userId]);
+    });
+  }
+
+  async setUserEnabled(userId: string, enabled: boolean): Promise<{ enabled: boolean }> {
+    const rows = await this.q<{ enabled: boolean }>(
+      'UPDATE users SET "enabled" = $2, "tokenVersion" = "tokenVersion" + 1 WHERE id = $1 RETURNING "enabled"',
+      [userId, enabled],
+    );
+    if (!rows.length) throw new NotFoundException();
+    return { enabled: rows[0].enabled };
   }
 
   // ---------------------------------------------------------------- admin

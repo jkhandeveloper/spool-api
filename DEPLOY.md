@@ -62,15 +62,15 @@ certbot --nginx -d api.spool.zasstech.com --redirect -m you@example.com --agree-
 
 Certbot edits the nginx site to add TLS and an http → https redirect, and its timer renews the certificate automatically.
 
-### 2c. Anthropic API key (for session summaries)
+### 2c. AI API key (summaries and guided audio)
 
 ```bash
 ssh spool-deploy
-nano /opt/spool-api/.env        # set OPENAI_API_KEY=sk-... (or ANTHROPIC_API_KEY)
+nano /opt/spool-api/.env        # OPENAI_API_KEY enables summaries and guided audio
 cd /opt/spool-api && docker compose -f docker-compose.prod.yml up -d
 ```
 
-Until a key is set, everything else works, but summaries fail and the app offers **Try again**.
+Without `OPENAI_API_KEY`, guided audio is unavailable. Summaries can alternatively use `ANTHROPIC_API_KEY`.
 
 ### 2d. Admin login (analytics dashboard)
 
