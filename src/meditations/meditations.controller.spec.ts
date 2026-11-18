@@ -4,7 +4,7 @@ import {
   MeditationsController,
   mixMeditationAudio,
 } from './meditations.controller.js';
-import { MEDITATIONS } from './meditations.data.js';
+import { MEDITATIONS, dayPeriod } from './meditations.data.js';
 
 const SAMPLE_RATE = 24_000;
 
@@ -79,6 +79,32 @@ describe('mixMeditationAudio', () => {
     expect(mixed.cues[1].at).toBeCloseTo(3.75);
     // The track grows to fit the last cue plus a quiet tail.
     expect(mixed.durationSeconds).toBeCloseTo(3.75 + 3 + 1.5);
+  });
+});
+
+describe('meditation catalogue', () => {
+  it('switches the part of the day at 04:00, 12:00 and 18:00', () => {
+    const periods = Array.from({ length: 24 }, (_, hour) => dayPeriod(hour));
+    expect(periods.slice(0, 4)).toEqual(Array(4).fill('night'));
+    expect(periods.slice(4, 12)).toEqual(Array(8).fill('morning'));
+    expect(periods.slice(12, 18)).toEqual(Array(6).fill('afternoon'));
+    expect(periods.slice(18)).toEqual(Array(6).fill('night'));
+  });
+
+  it('has one all-day meditation for each part of the day', () => {
+    const allDay = MEDITATIONS.filter((m) => m.allDay).map((m) => m.timeOfDay);
+    expect(allDay.sort()).toEqual(['afternoon', 'morning', 'night']);
+  });
+
+  it('keeps every meditation three minutes long with closely paced cues', () => {
+    expect(new Set(MEDITATIONS.map((m) => m.id)).size).toBe(MEDITATIONS.length);
+    for (const m of MEDITATIONS) {
+      expect(m.durationSeconds).toBe(180);
+      m.steps.forEach((step, i) => {
+        const next = m.steps[i + 1]?.at ?? m.durationSeconds;
+        expect(next - step.at).toBeLessThanOrEqual(15);
+      });
+    }
   });
 });
 

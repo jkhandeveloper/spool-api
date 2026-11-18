@@ -5,7 +5,17 @@ import { AppointmentsService } from '../appointments/appointments.service.js';
 import { GoalsService } from '../goals/goals.service.js';
 import { JournalService } from '../journal/journal.service.js';
 import { SessionsService } from '../sessions/sessions.service.js';
-import { MEDITATIONS } from '../meditations/meditations.data.js';
+import {
+  MEDITATIONS,
+  dayPeriod,
+  type DayPeriod,
+} from '../meditations/meditations.data.js';
+
+const PERIOD_LABELS: Record<DayPeriod, string> = {
+  morning: 'Morning meditation',
+  afternoon: 'Afternoon meditation',
+  night: 'Night meditation',
+};
 
 const REMINDERS = [
   'You are safe.',
@@ -50,21 +60,17 @@ export class TodayController {
       ]);
 
     const dayIndex = Math.floor(Date.now() / 86_400_000);
-    const timeOfDay = hour < 12 ? 'morning' : hour >= 17 ? 'evening' : 'any';
+    const period = dayPeriod(hour);
     const meditation =
-      MEDITATIONS.find((m) => m.timeOfDay === timeOfDay) ?? MEDITATIONS[0];
+      MEDITATIONS.find((m) => m.allDay && m.timeOfDay === period) ??
+      MEDITATIONS[0];
 
     return {
       user,
       reminder: REMINDERS[dayIndex % REMINDERS.length],
       meditation: {
         id: meditation.id,
-        label:
-          timeOfDay === 'evening'
-            ? 'Evening meditation'
-            : timeOfDay === 'morning'
-              ? 'Morning meditation'
-              : 'Meditation',
+        label: PERIOD_LABELS[period],
         title: meditation.title,
         durationSeconds: meditation.durationSeconds,
       },

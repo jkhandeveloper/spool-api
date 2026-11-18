@@ -10,3 +10,6 @@ coverage/
 
 # Claude Code local settings
 .claude/
+
+# Local Claude Code guidance (not shipped)
+CLAUDE.md

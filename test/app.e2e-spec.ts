@@ -546,10 +546,21 @@ describe('Spool API (e2e)', () => {
         .expect(200);
       expect(today.body).toMatchObject({
         reminder: expect.any(String),
-        meditation: { id: 'safe-place', label: 'Evening meditation' },
+        meditation: { id: 'all-day-night', label: 'Night meditation' },
         nextAppointment: { id: a.body.id },
         journalThisWeek: 0,
       });
+      for (const [hour, id] of [
+        [4, 'all-day-morning'],
+        [12, 'all-day-afternoon'],
+        [18, 'all-day-night'],
+      ] as const) {
+        const atHour = await http
+          .get(`/api/v1/today?hour=${hour}`)
+          .set(auth)
+          .expect(200);
+        expect(atHour.body.meditation.id).toBe(id);
+      }
 
       const grad = await http.post('/api/v1/me/graduate').set(auth).expect(200);
       expect(grad.body.graduatedAt).toEqual(expect.any(String));
