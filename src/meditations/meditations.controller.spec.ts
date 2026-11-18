@@ -1,7 +1,12 @@
 import { ServiceUnavailableException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
-import { MeditationsController } from './meditations.controller.js';
+import {
+  MeditationsController,
+  mixMeditationAudio,
+} from './meditations.controller.js';
 import { MEDITATIONS } from './meditations.data.js';
+
+const SAMPLE_RATE = 24_000;
 
 function configWith(values: Record<string, string | undefined>): ConfigService {
   return {
@@ -9,23 +14,15 @@ function configWith(values: Record<string, string | undefined>): ConfigService {
   } as unknown as ConfigService;
 }
 
-function wav(durationSeconds = 0.5): ArrayBuffer {
-  const sampleRate = 24_000;
-  const dataSize = Math.round(durationSeconds * sampleRate * 2);
-  const bytes = Buffer.alloc(44 + dataSize);
-  bytes.write('RIFF', 0);
-  bytes.writeUInt32LE(36 + dataSize, 4);
-  bytes.write('WAVE', 8);
-  bytes.write('fmt ', 12);
-  bytes.writeUInt32LE(16, 16);
-  bytes.writeUInt16LE(1, 20);
-  bytes.writeUInt16LE(1, 22);
-  bytes.writeUInt32LE(sampleRate, 24);
-  bytes.writeUInt32LE(sampleRate * 2, 28);
-  bytes.writeUInt16LE(2, 32);
-  bytes.writeUInt16LE(16, 34);
-  bytes.write('data', 36);
-  bytes.writeUInt32LE(dataSize, 40);
+/** Raw 24 kHz 16-bit mono PCM, as OpenAI returns for `response_format: 'pcm'`. */
+function pcm(durationSeconds = 0.5, amplitude = 1000): Buffer {
+  const samples = Math.round(durationSeconds * SAMPLE_RATE);
+  const bytes = Buffer.alloc(samples * 2);
+  for (let i = 0; i < samples; i++) bytes.writeInt16LE(amplitude, i * 2);
+  return bytes;
+}
+
+function toArrayBuffer(bytes: Buffer): ArrayBuffer {
   return bytes.buffer.slice(
     bytes.byteOffset,
     bytes.byteOffset + bytes.byteLength,
@@ -36,12 +33,61 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe('mixMeditationAudio', () => {
+  it('places cues at their written times in one continuous WAV', () => {
+    const mixed = mixMeditationAudio(
+      {
+        durationSeconds: 10,
+        steps: [
+          { at: 0, text: 'a' },
+          { at: 4, text: 'b' },
+        ],
+      },
+      [pcm(1), pcm(1)],
+    );
+
+    expect(mixed.durationSeconds).toBe(10);
+    expect(mixed.cues).toEqual([
+      { at: 0, durationSeconds: 1 },
+      { at: 4, durationSeconds: 1 },
+    ]);
+    expect(mixed.wav.toString('ascii', 0, 4)).toBe('RIFF');
+    expect(mixed.wav.readUInt32LE(40)).toBe(10 * SAMPLE_RATE * 2);
+    expect(mixed.wav.length).toBe(44 + 10 * SAMPLE_RATE * 2);
+    // Voice in the middle of a cue, silence between cues.
+    expect(mixed.wav.readInt16LE(44 + Math.round(0.5 * SAMPLE_RATE) * 2)).toBe(
+      1000,
+    );
+    expect(mixed.wav.readInt16LE(44 + 2 * SAMPLE_RATE * 2)).toBe(0);
+    expect(mixed.wav.readInt16LE(44 + Math.round(4.5 * SAMPLE_RATE) * 2)).toBe(
+      1000,
+    );
+  });
+
+  it('pushes a cue back instead of overlapping a long previous cue', () => {
+    const mixed = mixMeditationAudio(
+      {
+        durationSeconds: 5,
+        steps: [
+          { at: 0, text: 'a' },
+          { at: 2, text: 'b' },
+        ],
+      },
+      [pcm(3), pcm(3)],
+    );
+
+    expect(mixed.cues[1].at).toBeCloseTo(3.75);
+    // The track grows to fit the last cue plus a quiet tail.
+    expect(mixed.durationSeconds).toBeCloseTo(3.75 + 3 + 1.5);
+  });
+});
+
 describe('MeditationsController audio', () => {
-  it('returns timed WAV segments and reuses the generated result', async () => {
+  it('generates one continuous track once and serves it as a file', async () => {
     const meditation = MEDITATIONS.find((item) => item.id === 'box-breathing')!;
     const fetchMock = vi.fn(
       (_input: string | URL | Request, _init?: RequestInit) =>
-        Promise.resolve(new Response(wav(), { status: 200 })),
+        Promise.resolve(new Response(toArrayBuffer(pcm()), { status: 200 })),
     );
     vi.stubGlobal('fetch', fetchMock);
     const controller = new MeditationsController(
@@ -54,17 +100,21 @@ describe('MeditationsController audio', () => {
 
     const first = await controller.audio(meditation.id);
     const second = await controller.audio(meditation.id);
+    const file = await controller.audioFile(meditation.id);
 
     expect(first).toBe(second);
-    expect(first.segments).toHaveLength(meditation.steps.length);
-    expect(first.segments[0]).toMatchObject({
+    expect(first.mimeType).toBe('audio/wav');
+    expect(first.version).toMatch(/^[0-9a-f]{16}$/);
+    expect(first.durationSeconds).toBe(meditation.durationSeconds);
+    expect(first.cues).toHaveLength(meditation.steps.length);
+    expect(first.cues[0]).toEqual({
       at: meditation.steps[0].at,
       durationSeconds: 0.5,
-      mimeType: 'audio/wav',
     });
-    expect(first.segments[0].audioBase64).toBeTruthy();
-    expect(first.silence.mimeType).toBe('audio/wav');
-    expect(first.silence.fiveSecondBase64).toBeTruthy();
+    expect(file.getHeaders()).toMatchObject({
+      type: 'audio/wav',
+      length: 44 + meditation.durationSeconds * SAMPLE_RATE * 2,
+    });
     expect(fetchMock).toHaveBeenCalledTimes(meditation.steps.length);
 
     const [, requestInit] = fetchMock.mock.calls[0]!;
@@ -75,7 +125,7 @@ describe('MeditationsController audio', () => {
     expect(request).toMatchObject({
       model: 'test-model',
       voice: 'coral',
-      response_format: 'wav',
+      response_format: 'pcm',
     });
   });
 

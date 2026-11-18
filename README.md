@@ -87,7 +87,7 @@ All routes are under `/api/v1`. Every route needs a `Bearer` access token except
 | Sessions (02–04, 11, 12, P5) | `GET sessions` (history), `GET sessions/pending`, `GET sessions/prompts`, `POST sessions`, `GET sessions/:id`, `POST sessions/:id/transcript`, `POST sessions/:id/retry`, `PATCH sessions/:id`, `POST sessions/:id/save`, `DELETE sessions/:id` |
 | Goals (P4) | `GET/POST goals`, `GET/PATCH goals/:id`, `POST goals/:id/check-ins` |
 | Appointments (05, 10, P7) | `GET appointments?from&to`, `GET appointments/next`, `POST appointments`, `GET/PATCH/DELETE appointments/:id` (delete cancels) |
-| Meditations (P3) | `GET meditations`, `GET meditations/:id` |
+| Meditations (P3) | `GET meditations`, `GET meditations/:id`, `POST meditations/:id/audio` (generates the guided narration once and returns its cue timings), `GET meditations/:id/audio` (the narration as one continuous WAV) |
 | Insights | `GET me/insights?days=7\|30\|90\|365&tz=<IANA zone>`: the user's own activity, streaks, topics and patterns |
 | Admin analytics | `POST admin/login`, `GET admin/analytics?days&tz`, `GET admin/users?search&sort&order&limit&offset`, `GET admin/users/:id?days&tz` (admin token only) |
 | Health | `GET health` |
