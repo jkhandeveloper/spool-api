@@ -54,7 +54,7 @@ If the model API can't be reached (bad key, outage, network), the session still 
 
 ## Deployment
 
-Pushes to `main` are tested, built into a Docker image and deployed to https://api.spool.zasstech.com by GitHub Actions. See [DEPLOY.md](DEPLOY.md) for the server layout, one-time setup, secrets and day-to-day commands.
+Pushes to `main` are tested, built into a Docker image and deployed to https://api.spoolapp.net by GitHub Actions. See [DEPLOY.md](DEPLOY.md) for the server layout, one-time setup, secrets and day-to-day commands.
 
 ## Privacy model
 

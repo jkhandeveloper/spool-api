@@ -73,12 +73,12 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    name: Deploy to api.spool.zasstech.com
+    name: Deploy to api.spoolapp.net
     needs: image
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: https://api.spool.zasstech.com/api/v1/health
+      url: https://api.spoolapp.net/api/v1/health
     permissions:
       contents: read
       packages: read
@@ -117,7 +117,7 @@ jobs:
       - name: Check public health endpoint
         run: |
           for i in $(seq 1 10); do
-            curl -fsS https://api.spool.zasstech.com/api/v1/health && exit 0
+            curl -fsS https://api.spoolapp.net/api/v1/health && exit 0
             sleep 3
           done
           echo "Health check failed" >&2; exit 1

@@ -1,13 +1,13 @@
 # Deploying Spool API
 
-Production runs at **https://api.spool.zasstech.com** on the DigitalOcean droplet `68.183.89.22` (Ubuntu 24.04). The server also hosts the zass apps, so Spool keeps to its own user, folder, containers and nginx site.
+Production runs at **https://api.spoolapp.net** on the DigitalOcean droplet `68.183.89.22` (Ubuntu 24.04). The server also hosts the zass apps, so Spool keeps to its own user, folder, containers and nginx site.
 
 | What | Where |
 |---|---|
 | App folder | `/opt/spool-api` (owned by `deploy`) |
 | Secrets | `/opt/spool-api/.env` (mode 600, never in git) |
 | Containers | `spool_api` (port `127.0.0.1:3010`), `spool_postgres` (volume `spool_spool-pg`) |
-| nginx site | `/etc/nginx/sites-available/api.spool.zasstech.com` → `127.0.0.1:3010` |
+| nginx site | `/etc/nginx/sites-available/api.spoolapp.net` → `127.0.0.1:3010` |
 | Image | `ghcr.io/jkhandeveloper/spool-api:<commit sha>` |
 
 ## 1. Log in to the server
@@ -43,21 +43,22 @@ Then `ssh spool` (root) or `ssh spool-deploy`.
 
 ### 2a. DNS
 
-`zasstech.com` uses Cloudflare. In Cloudflare → DNS, add:
+At the `spoolapp.net` DNS provider, point both hostnames straight at the droplet (if the provider is Cloudflare, keep the records **DNS only**, because the certificate comes from Let's Encrypt on the server):
 
-| Type | Name | Content | Proxy |
-|---|---|---|---|
-| A | `api.spool` | `68.183.89.22` | **DNS only (grey cloud)** |
+| Type | Name | Content |
+|---|---|---|
+| A | `api` | `68.183.89.22` |
+| A | `web` | `68.183.89.22` |
 
-Keep it grey. Cloudflare's free certificate only covers one level (`*.zasstech.com`), so a proxied `api.spool.zasstech.com` would fail TLS. The certificate comes from Let's Encrypt on the server instead.
+Check it: `dig +short api.spoolapp.net` should print `68.183.89.22`.
 
-Check it: `dig +short api.spool.zasstech.com` should print `68.183.89.22`.
+The old `api.spool.zasstech.com` and `web.spool.zasstech.com` sites still run alongside, so app builds made before the move keep working. Remove those nginx sites (and `https://web.spool.zasstech.com` from `CORS_ORIGINS`) once no installed builds use them.
 
 ### 2b. HTTPS certificate
 
 ```bash
 ssh spool
-certbot --nginx -d api.spool.zasstech.com --redirect -m you@example.com --agree-tos -n
+certbot --nginx -d api.spoolapp.net --redirect -m you@example.com --agree-tos -n
 ```
 
 Certbot edits the nginx site to add TLS and an http → https redirect, and its timer renews the certificate automatically.
@@ -74,7 +75,7 @@ Without `OPENAI_API_KEY`, guided audio is unavailable. Summaries can alternative
 
 ### 2d. Admin login (analytics dashboard)
 
-`ADMIN_USERNAME` and `ADMIN_PASSWORD` in `/opt/spool-api/.env` are the login for https://web.spool.zasstech.com/admin. To change them:
+`ADMIN_USERNAME` and `ADMIN_PASSWORD` in `/opt/spool-api/.env` are the login for https://web.spoolapp.net/admin. To change them:
 
 ```bash
 ssh spool-deploy
@@ -105,7 +106,7 @@ The workflow also uses a `production` environment, which GitHub creates on the f
    - It builds the Docker image and pushes it to GHCR, tagged with the commit SHA and `latest`.
    - It copies [deploy/docker-compose.prod.yml](deploy/docker-compose.prod.yml) and [deploy/deploy.sh](deploy/deploy.sh) to `/opt/spool-api`, then runs `deploy.sh` over SSH as `deploy`.
    - `deploy.sh` pulls the new image and restarts `spool_api`. Database migrations run on startup. It then waits for the container's health check. **If the new version isn't healthy within 90 seconds, it rolls back to the previous image** and the job fails.
-   - Last, it calls `https://api.spool.zasstech.com/api/v1/health`.
+   - Last, it calls `https://api.spoolapp.net/api/v1/health`.
 
 The server never builds anything. It only pulls images, because 1 GB of RAM is too little to compile next to the zass apps.
 
